@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Time pass</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@100;200;300&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      margin: 0; padding: 0; box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    /* Background layer — transitions between black and white */
+    #stage {
+      width: 100vw;
+      height: 100dvh;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      user-select: none;
+      /* Apple-style spring-like ease for bg */
+      transition: background 0.75s cubic-bezier(0.4, 0.0, 0.2, 1);
+    }
+
+    #stage.inverted {
+      background: #fff;
+    }
+
+    .main-text {
+      /* Use SF Pro Display via Google Fonts fallback; system-ui picks up SF Pro on Apple devices */
+      font-family: -apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+      font-size: clamp(30px, 9vw, 74px);
+      font-weight: 200;           /* ultralight — very Apple */
+      letter-spacing: 0.06em;
+      color: #fff;
+      white-space: nowrap;
+      position: relative;
+      z-index: 1;
+      /* opacity fade + subtle upward drift — Apple keynote style */
+      transition:
+        opacity 0.65s cubic-bezier(0.4, 0.0, 0.2, 1),
+        transform 0.65s cubic-bezier(0.4, 0.0, 0.2, 1),
+        color 0.75s cubic-bezier(0.4, 0.0, 0.2, 1);
+    }
+
+    #stage.inverted .main-text {
+      color: #000;
+    }
+
+    .main-text.exit {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+
+    .main-text.enter {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+
+    /* Cross SVG */
+    #cross-svg {
+      position: absolute;
+      z-index: 2;
+      pointer-events: none;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(88vw, 420px);
+      height: auto;
+      transition: opacity 0.55s cubic-bezier(0.4, 0.0, 0.2, 1);
+    }
+
+    /* Definition block */
+    #definition {
+      position: absolute;
+      text-align: center;
+      left: 50%;
+      transform: translateX(-50%);
+      top: calc(50% + clamp(36px, 8vw, 60px));
+      width: min(88vw, 360px);
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0;
+      transition:
+        opacity 0.7s cubic-bezier(0.4, 0.0, 0.2, 1) 0.15s,
+        transform 0.7s cubic-bezier(0.4, 0.0, 0.2, 1) 0.15s,
+        color 0.75s cubic-bezier(0.4, 0.0, 0.2, 1);
+      transform: translateX(-50%) translateY(8px);
+    }
+
+    #stage.inverted #definition {
+      color: #000;
+    }
+
+    #stage.show-definition #definition {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .def-meaning {
+      font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+      font-size: clamp(13px, 3.6vw, 17px);
+      font-weight: 300;
+      font-style: italic;
+      color: #fff;
+      letter-spacing: 0.02em;
+      line-height: 1.5;
+      margin-bottom: clamp(10px, 2.5vw, 16px);
+      transition: color 0.75s cubic-bezier(0.4, 0.0, 0.2, 1);
+    }
+
+    #stage.inverted .def-meaning {
+      color: #000;
+    }
+
+    .def-example {
+      font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+      font-size: clamp(11px, 3vw, 14px);
+      font-weight: 300;
+      color: rgba(255,255,255,0.45);
+      letter-spacing: 0.03em;
+      line-height: 1.6;
+      transition: color 0.75s cubic-bezier(0.4, 0.0, 0.2, 1);
+    }
+
+    #stage.inverted .def-example {
+      color: rgba(0,0,0,0.4);
+    }
+
+    /* Hairline divider — very Apple */
+    .def-divider {
+      width: 28px;
+      height: 1px;
+      background: rgba(255,255,255,0.25);
+      margin: 0 auto clamp(10px, 2.5vw, 16px);
+      transition: background 0.75s cubic-bezier(0.4, 0.0, 0.2, 1);
+    }
+
+    #stage.inverted .def-divider {
+      background: rgba(0,0,0,0.2);
+    }
+
+    /* Hint text */
+    .hint {
+      position: absolute;
+      bottom: max(28px, env(safe-area-inset-bottom, 28px));
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+      font-size: clamp(11px, 3vw, 13px);
+      font-weight: 300;
+      color: rgba(255,255,255,0.3);
+      letter-spacing: 0.1em;
+      pointer-events: none;
+      white-space: nowrap;
+      transition: color 0.75s cubic-bezier(0.4, 0.0, 0.2, 1),
+                  opacity 0.4s ease;
+    }
+
+    #stage.inverted .hint {
+      color: rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body>
+
+<div id="stage">
+  <span class="main-text" id="label">Time pass</span>
+
+  <svg id="cross-svg"
+       viewBox="0 0 340 130"
+       xmlns="http://www.w3.org/2000/svg"
+       style="opacity:0;">
+    <line id="line1"
+          x1="20" y1="20" x2="20" y2="20"
+          stroke="#e53935" stroke-width="5.5" stroke-linecap="round"/>
+    <line id="line2"
+          x1="320" y1="20" x2="320" y2="20"
+          stroke="#e53935" stroke-width="5.5" stroke-linecap="round"/>
+  </svg>
+
+  <div id="definition">
+    <p class="def-meaning">"An activity done purely to enjoy<br>or fill one's leisure time."</p>
+    <div class="def-divider"></div>
+    <p class="def-example">e.g. &ldquo;Katha vartha is my passed time.&rdquo;</p>
+  </div>
+
+  <span class="hint" id="hint">tap anywhere to continue</span>
+</div>
+
+<script>
+  const stage  = document.getElementById('stage');
+  const label  = document.getElementById('label');
+  const hint   = document.getElementById('hint');
+  const cross  = document.getElementById('cross-svg');
+  const line1  = document.getElementById('line1');
+  const line2  = document.getElementById('line2');
+  const defBox = document.getElementById('definition');
+
+  let state     = 0;
+  let animating = false;
+
+  /* Apple-tuned cubic ease-in-out */
+  function appleEase(t) {
+    return t < 0.5
+      ? 4 * t * t * t
+      : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  function resetLines() {
+    line1.setAttribute('x2', '20');  line1.setAttribute('y2', '20');
+    line2.setAttribute('x2', '320'); line2.setAttribute('y2', '20');
+  }
+
+  function drawCross(onDone) {
+    resetLines();
+    cross.style.opacity = '1';
+    const dur   = 420;
+    const start = performance.now();
+
+    (function step(now) {
+      const t = Math.min((now - start) / dur, 1);
+      const e = appleEase(t);
+
+      line1.setAttribute('x2', 20  + (320 - 20)  * e);
+      line1.setAttribute('y2', 20  + (110 - 20)  * e);
+      line2.setAttribute('x2', 320 + (20  - 320) * e);
+      line2.setAttribute('y2', 20  + (110 - 20)  * e);
+
+      if (t < 1) requestAnimationFrame(step);
+      else { animating = false; if (onDone) onDone(); }
+    })(performance.now());
+  }
+
+  /* Swap text with Apple-style exit (up) → enter (from below) */
+  function swapText(newText, onDone) {
+    // exit: fade up
+    label.classList.add('exit');
+
+    setTimeout(() => {
+      label.textContent = newText;
+      label.classList.remove('exit');
+      label.classList.add('enter');
+
+      // force reflow so the enter class is painted before removal
+      label.getBoundingClientRect();
+
+      requestAnimationFrame(() => {
+        label.classList.remove('enter');
+        setTimeout(() => { animating = false; if (onDone) onDone(); }, 680);
+      });
+    }, 650);
+  }
+
+  function handleTap() {
+    if (animating) return;
+    animating = true;
+    state = (state + 1) % 3;
+
+    if (state === 0) {
+      // Reset — instant, no animation needed between final and start
+      stage.classList.remove('inverted', 'show-definition');
+      cross.style.transition = 'none';
+      cross.style.opacity    = '0';
+      resetLines();
+      label.classList.remove('exit', 'enter');
+      label.style.opacity  = '';
+      label.style.transform = '';
+      label.textContent    = 'Time pass';
+      hint.textContent     = 'tap anywhere to continue';
+      animating = false;
+
+    } else if (state === 1) {
+      // Draw cross on top of text
+      cross.style.transition = 'opacity 0.45s cubic-bezier(0.4,0.0,0.2,1)';
+      label.textContent = 'Time pass';
+      drawCross();
+      hint.textContent = 'tap to transform';
+
+    } else {
+      // Fade cross out, invert bg, swap text
+      cross.style.transition = 'opacity 0.55s cubic-bezier(0.4,0.0,0.2,1)';
+      cross.style.opacity    = '0';
+
+      // Slight delay then invert + swap
+      setTimeout(() => {
+        stage.classList.add('inverted');
+        resetLines();
+        swapText('Passed Time', () => {
+          stage.classList.add('show-definition');
+        });
+      }, 200);
+
+      hint.textContent = 'tap to restart';
+    }
+  }
+
+  stage.addEventListener('click', handleTap);
+</script>
+
+</body>
+</html>
